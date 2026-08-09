@@ -461,6 +461,14 @@
   .cat-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
   .cat-legend-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .cat-legend-val{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink-soft);flex-shrink:0;white-space:nowrap;}
+  .method-bar-chart{background:var(--page);border-radius:10px;padding:12px 14px;margin-bottom:16px;}
+  .method-bar-row{margin-bottom:12px;}
+  .method-bar-row:last-child{margin-bottom:0;}
+  .method-bar-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:6px;gap:8px;}
+  .method-bar-head .lbl{display:flex;align-items:center;gap:6px;}
+  .method-bar-head .val{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink-soft);white-space:nowrap;flex-shrink:0;}
+  .method-bar-track{height:14px;border-radius:8px;background:var(--paper);overflow:hidden;}
+  .method-bar-fill{height:100%;border-radius:8px;}
   .top-spender{
     display:flex;align-items:center;gap:10px;background:var(--page);
     border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;
@@ -1409,6 +1417,27 @@ function renderCategoryChart(catEntries, total, cur){
   </div>`;
 }
 
+function renderMethodBarChart(cashAmt, cardAmt, total, cur){
+  if (total <= 0) return '';
+  const maxAmt = Math.max(cashAmt, cardAmt, 0.01);
+  const rows = [
+    ['Cash', cashAmt, 'var(--marigold)', phIcon('money',14)],
+    ['Card', cardAmt, 'var(--teal)', phIcon('creditCard',14)]
+  ];
+  const barsHtml = rows.map(([label,amount,color,icon]) => {
+    const widthPct = Math.round((amount/maxAmt)*100);
+    const pct = Math.round((amount/total)*100);
+    return `<div class="method-bar-row">
+      <div class="method-bar-head">
+        <span class="lbl"><span class="stat-icon">${icon}</span><span class="txt">${label}</span></span>
+        <span class="val">${fmt(amount,cur)} · ${pct}%</span>
+      </div>
+      <div class="method-bar-track"><div class="method-bar-fill" style="width:${widthPct}%;background:${color};"></div></div>
+    </div>`;
+  }).join('');
+  return `<div class="method-bar-chart">${barsHtml}</div>`;
+}
+
 function renderInsights(){
   const el = document.getElementById('insightsCard');
   const data = computeInsights();
@@ -1439,10 +1468,7 @@ function renderInsights(){
     const catEntries = Object.entries(dayStats.cats).sort((a,b) => b[1]-a[1]);
     const catChart = renderCategoryChart(catEntries, dayStats.total, cur);
 
-    const methodRows = dayStats.total > 0 ? (
-      statRow('Cash', dayStats.methods.cash, dayStats.total, cur, 'var(--teal)', phIcon('money',14)) +
-      statRow('Card', dayStats.methods.card, dayStats.total, cur, 'var(--teal)', phIcon('creditCard',14))
-    ) : '';
+    const methodChart = renderMethodBarChart(dayStats.methods.cash, dayStats.methods.card, dayStats.total, cur);
 
     const personEntries = PEOPLE.map(p => [p, dayStats.persons[p]]).filter(([,amt]) => amt > 0).sort((a,b) => b[1]-a[1]);
     const topSpender = personEntries[0];
@@ -1465,7 +1491,7 @@ function renderInsights(){
         ${catChart}
 
         <div class="stat-group-title">Payment method</div>
-        ${methodRows}
+        ${methodChart}
 
         <div class="stat-group-title">Who paid</div>
         ${topHtml}
