@@ -1,6 +1,6 @@
 {
-  "name": "Bangkok Trip Expense Ledger",
-  "short_name": "Bangkok Trip",
+  "name": "BKK XP Tracker",
+  "short_name": "BKK XP Tracker",
   "description": "Shared expense tracker for the Bangkok trip",
   "start_url": "/",
   "scope": "/",
