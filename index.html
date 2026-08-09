@@ -1800,14 +1800,11 @@ function renderCalendarView(){
   });
   const dayList = Object.values(days).sort((a,b) => a.ts - b.ts);
 
-  if (!selectedCalendarDay || (selectedCalendarDay !== 'all' && !days[selectedCalendarDay])){
-    selectedCalendarDay = dayList.length ? dayList[dayList.length - 1].key : 'all';
+  if (!selectedCalendarDay || !days[selectedCalendarDay]){
+    selectedCalendarDay = dayList.length ? dayList[dayList.length - 1].key : null;
   }
 
-  const allTab = `<button class="day-tab ${selectedCalendarDay==='all'?'active':''}" data-key="all">
-    <span class="dt-month">ALL</span><span class="dt-day">${filteredItems.length}</span>
-  </button>`;
-  tabsEl.innerHTML = allTab + dayList.map(d => `
+  tabsEl.innerHTML = dayList.map(d => `
     <button class="day-tab ${d.key===selectedCalendarDay?'active':''}" data-key="${d.key}">
       <span class="dt-month">${d.month}</span><span class="dt-day">${d.dayNum}</span>
     </button>`).join('');
@@ -1815,10 +1812,10 @@ function renderCalendarView(){
     btn.onclick = () => { selectedCalendarDay = btn.dataset.key; renderCalendarView(); };
   });
 
-  const dayItems = (selectedCalendarDay === 'all' ? filteredItems : filteredItems.filter(item => {
+  const dayItems = filteredItems.filter(item => {
     const dt = new Date(item.ts);
     return (dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate()) === selectedCalendarDay;
-  })).sort((a,b) => b.ts - a.ts);
+  }).sort((a,b) => b.ts - a.ts);
 
   listEl.innerHTML = dayItems.length ? dayItems.map(renderActivityItemHtml).join('') : `<div class="empty">No matching activity.</div>`;
   attachDelButtons(listEl);
