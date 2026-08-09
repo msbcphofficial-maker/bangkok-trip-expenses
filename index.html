@@ -499,13 +499,21 @@
   .day-tab .dt-month{display:block;font-size:9px;letter-spacing:0.08em;opacity:0.75;}
   .day-tab .dt-day{display:block;font-size:16px;}
   .day-tab.active{border-color:var(--marigold);background:var(--marigold-soft);color:var(--ink);}
-  .calendar-filters{margin-bottom:14px;}
-  .calendar-filter-row{display:flex;gap:8px;margin-top:8px;}
-  .calendar-filter-row select{
-    flex:1.6;min-width:0;padding:10px 8px;border-radius:9px;
-    border:1px solid var(--paper-line);background:#fff;
-    font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink);
+  .calendar-search-row{display:flex;gap:8px;margin-bottom:14px;}
+  .calendar-search-row input{flex:1;min-width:0;}
+  .calendar-filter-btn{
+    flex-shrink:0;display:flex;align-items:center;gap:6px;
+    padding:0 14px;border-radius:9px;border:1.5px solid var(--paper-line);
+    background:#fff;color:var(--ink-soft);cursor:pointer;
+    font-family:'Space Mono',monospace;font-size:13px;position:relative;
   }
+  .calendar-filter-btn.has-filters{border-color:var(--coral);color:var(--coral);background:var(--coral-soft);}
+  .filter-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:16px;height:16px;padding:0 3px;border-radius:20px;
+    background:var(--coral);color:#fff;font-size:10px;line-height:1;
+  }
+  .calendar-filter-row{display:flex;gap:8px;margin-top:0;}
   .calendar-filter-row input{flex:1;min-width:0;width:auto;}
   .day-total-line{
     font-size:13px;color:var(--ink-soft);margin-bottom:16px;
@@ -591,13 +599,13 @@
     <div class="section-title" id="activityTitle">Activity</div>
     <div id="expenseList"></div>
     <div id="calendarView" style="display:none;">
-      <div class="calendar-filters">
+      <div class="calendar-search-row">
         <input type="text" id="calendarSearchInput" placeholder="Search by name, category, card...">
-        <div class="calendar-filter-row">
-          <select id="calendarCategoryFilter"></select>
-          <input type="text" inputmode="decimal" id="calendarMinAmount" placeholder="Min">
-          <input type="text" inputmode="decimal" id="calendarMaxAmount" placeholder="Max">
-        </div>
+        <button class="calendar-filter-btn" id="openCalendarFilterBtn">
+          <svg class="ph-icon" width="15" height="15" viewBox="0 0 256 256" fill="currentColor"><path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm106.18,74.58A8,8,0,0,0,144,136v58.66L112,216V136a8,8,0,0,0-2.16-5.47L40,56H216Z"/></svg>
+          Filter
+          <span class="filter-badge" id="calendarFilterBadge" style="display:none;"></span>
+        </button>
       </div>
       <div class="day-tabs" id="calendarDayTabs"></div>
       <div id="calendarDayList"></div>
@@ -709,6 +717,36 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="calendarFilterOverlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Filter activity</h2>
+        <button class="modal-close" id="closeCalendarFilterBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Category</label>
+        <div class="category-grid" id="filterCategorySelect"></div>
+
+        <label>Payment method</label>
+        <div class="curr-select" id="filterMethodSelect"></div>
+
+        <label>Person</label>
+        <div class="who-select" id="filterPersonSelect"></div>
+
+        <label>Amount range</label>
+        <div class="calendar-filter-row">
+          <input type="text" inputmode="decimal" id="filterMinAmount" placeholder="Min">
+          <input type="text" inputmode="decimal" id="filterMaxAmount" placeholder="Max">
+        </div>
+
+        <div class="modal-actions">
+          <button class="cancel-btn" id="clearCalendarFilterBtn">Clear</button>
+          <button class="add-btn" id="applyCalendarFilterBtn">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="lightboxOverlay">
     <div class="modal-card">
       <button class="lightbox-close" id="closeLightboxBtn">&times;</button>
@@ -782,7 +820,8 @@ const PH_PATHS = {
   database: "M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z",
   download: "M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z",
   chartDonut: "M128,24a8,8,0,0,0-8,8V88a8,8,0,0,0,8,8,32,32,0,1,1-27.72,16,8,8,0,0,0-2.93-10.93l-48.5-28A8,8,0,0,0,37.92,76,104,104,0,1,0,128,24ZM48.09,91.1,83,111.26A48.09,48.09,0,0,0,80,128c0,1.53.08,3,.22,4.52L41.28,143A88.16,88.16,0,0,1,48.09,91.1Zm-2.67,67.31,39-10.44A48.1,48.1,0,0,0,120,175.32v40.31A88.2,88.2,0,0,1,45.42,158.41ZM136,215.63V175.32a48,48,0,0,0,0-94.65V40.36a88,88,0,0,1,0,175.27Z",
-  calendarBlank: "M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"
+  calendarBlank: "M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z",
+  funnel: "M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm106.18,74.58A8,8,0,0,0,144,136v58.66L112,216V136a8,8,0,0,0-2.16-5.47L40,56H216Z"
 };
 function phIcon(name, px, color){
   const style = color ? ` style="color:${color}"` : '';
@@ -1699,18 +1738,20 @@ function renderExpenses(){
 
 let selectedCalendarDay = null; // a day key, or 'all'
 let calendarSearchQuery = '';
-let calendarCategoryFilter = 'all';
-let calendarMinAmount = '';
-let calendarMaxAmount = '';
+let calendarFilters = { category: 'all', method: 'all', person: 'all', min: '', max: '' };
+let pendingCalendarFilters = { ...calendarFilters };
 
 function getFilteredCalendarItems(){
   const q = calendarSearchQuery.trim().toLowerCase();
-  const min = parseFloat(calendarMinAmount);
-  const max = parseFloat(calendarMaxAmount);
+  const { category, method, person, min: minStr, max: maxStr } = calendarFilters;
+  const min = parseFloat(minStr);
+  const max = parseFloat(maxStr);
   return getAllActivityItems().filter(item => {
     if (item.type === 'expense'){
       const e = item.data;
-      if (calendarCategoryFilter !== 'all' && e.category !== calendarCategoryFilter) return false;
+      if (category !== 'all' && e.category !== category) return false;
+      if (method !== 'all' && e.paymentMethod !== method) return false;
+      if (person !== 'all' && e.paidBy !== person && !(e.split||[]).includes(person)) return false;
       if (!isNaN(min) && e.amount < min) return false;
       if (!isNaN(max) && e.amount > max) return false;
       if (q){
@@ -1720,7 +1761,9 @@ function getFilteredCalendarItems(){
       }
     } else {
       const p = item.data;
-      if (calendarCategoryFilter !== 'all') return false; // payments aren't categorized
+      if (category !== 'all') return false; // payments aren't categorized
+      if (method !== 'all' && p.method !== method) return false;
+      if (person !== 'all' && p.from !== person && p.to !== person) return false;
       if (!isNaN(min) && p.amount < min) return false;
       if (!isNaN(max) && p.amount > max) return false;
       if (q){
@@ -1781,25 +1824,88 @@ function renderCalendarView(){
   attachDelButtons(listEl);
 }
 
-const calendarCategoryFilterEl = document.getElementById('calendarCategoryFilter');
-calendarCategoryFilterEl.innerHTML = `<option value="all">All categories</option>` +
-  CATEGORIES.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
-calendarCategoryFilterEl.addEventListener('change', (e) => {
-  calendarCategoryFilter = e.target.value;
-  renderCalendarView();
-});
 document.getElementById('calendarSearchInput').addEventListener('input', (e) => {
   calendarSearchQuery = e.target.value;
   renderCalendarView();
 });
-document.getElementById('calendarMinAmount').addEventListener('input', (e) => {
-  calendarMinAmount = e.target.value;
-  renderCalendarView();
+
+function renderFilterCategorySelect(){
+  const el = document.getElementById('filterCategorySelect');
+  const opts = [{key:'all', label:'All', icon: phIcon('funnel',18)}, ...CATEGORIES];
+  el.innerHTML = opts.map(c => `
+    <button class="category-btn ${pendingCalendarFilters.category===c.key?'active':''}" data-k="${c.key}">
+      <span class="cicon">${c.icon}</span>${c.label}
+    </button>`).join('');
+  el.querySelectorAll('.category-btn').forEach(btn=>{
+    btn.onclick = () => { pendingCalendarFilters.category = btn.dataset.k; renderFilterCategorySelect(); };
+  });
+}
+
+function renderFilterMethodSelect(){
+  const el = document.getElementById('filterMethodSelect');
+  const opts = [['all','All'], ['cash', 'Cash'], ['card', 'Card']];
+  el.innerHTML = opts.map(([code,label]) =>
+    `<button class="curr-btn ${pendingCalendarFilters.method===code?'active':''}" data-m="${code}">${label}</button>`
+  ).join('');
+  el.querySelectorAll('.curr-btn').forEach(btn=>{
+    btn.onclick = () => { pendingCalendarFilters.method = btn.dataset.m; renderFilterMethodSelect(); };
+  });
+}
+
+function renderFilterPersonSelect(){
+  const el = document.getElementById('filterPersonSelect');
+  const opts = ['all', ...PEOPLE];
+  el.innerHTML = opts.map(p => {
+    const active = pendingCalendarFilters.person === p;
+    const style = active && p !== 'all' ? `border-color:${COLORS[p]};color:${COLORS[p]};background:${COLORS[p]}22;` : '';
+    return `<button class="who-btn ${active?'active':''}" data-p="${p}" style="${style}">${p === 'all' ? 'All' : p}</button>`;
+  }).join('');
+  el.querySelectorAll('.who-btn').forEach(btn=>{
+    btn.onclick = () => { pendingCalendarFilters.person = btn.dataset.p; renderFilterPersonSelect(); };
+  });
+}
+
+function updateCalendarFilterBadge(){
+  const btn = document.getElementById('openCalendarFilterBtn');
+  const badge = document.getElementById('calendarFilterBadge');
+  const count = ['category','method','person'].filter(k => calendarFilters[k] !== 'all').length
+    + (calendarFilters.min !== '' ? 1 : 0) + (calendarFilters.max !== '' ? 1 : 0);
+  btn.classList.toggle('has-filters', count > 0);
+  badge.style.display = count > 0 ? '' : 'none';
+  badge.textContent = count;
+}
+
+function openCalendarFilterModal(){
+  pendingCalendarFilters = { ...calendarFilters };
+  document.getElementById('filterMinAmount').value = calendarFilters.min;
+  document.getElementById('filterMaxAmount').value = calendarFilters.max;
+  renderFilterCategorySelect();
+  renderFilterMethodSelect();
+  renderFilterPersonSelect();
+  document.getElementById('calendarFilterOverlay').classList.add('open');
+}
+function closeCalendarFilterModal(){
+  document.getElementById('calendarFilterOverlay').classList.remove('open');
+}
+document.getElementById('openCalendarFilterBtn').onclick = openCalendarFilterModal;
+document.getElementById('closeCalendarFilterBtn').onclick = closeCalendarFilterModal;
+document.getElementById('calendarFilterOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'calendarFilterOverlay') closeCalendarFilterModal();
 });
-document.getElementById('calendarMaxAmount').addEventListener('input', (e) => {
-  calendarMaxAmount = e.target.value;
+document.getElementById('applyCalendarFilterBtn').onclick = () => {
+  pendingCalendarFilters.min = document.getElementById('filterMinAmount').value;
+  pendingCalendarFilters.max = document.getElementById('filterMaxAmount').value;
+  calendarFilters = { ...pendingCalendarFilters };
+  updateCalendarFilterBadge();
+  closeCalendarFilterModal();
   renderCalendarView();
-});
+};
+document.getElementById('clearCalendarFilterBtn').onclick = () => {
+  calendarFilters = { category: 'all', method: 'all', person: 'all', min: '', max: '' };
+  updateCalendarFilterBadge();
+  closeCalendarFilterModal();
+  renderCalendarView();
+};
 
 async function deleteItem(type, id){
   const isExpense = type === 'expense';
