@@ -593,6 +593,10 @@
         <div class="who-select" id="whoSelect"></div>
         <label>Payment method</label>
         <div class="curr-select" id="paymentMethodSelect"></div>
+        <div id="expenseCardWrap" style="display:none;">
+          <label>Card name</label>
+          <input type="text" id="expenseCardName" placeholder="e.g. BPI Visa">
+        </div>
 
         <label>Receipt photo (optional)</label>
         <div class="receipt-picker">
@@ -1130,6 +1134,7 @@ function renderPaymentMethodSelect(){
     if (btn.dataset.m === selectedPaymentMethod) btn.classList.add('active');
     btn.onclick = () => { selectedPaymentMethod = btn.dataset.m; renderPaymentMethodSelect(); };
   });
+  document.getElementById('expenseCardWrap').style.display = selectedPaymentMethod === 'card' ? '' : 'none';
 }
 
 function renderCurrSelect(){
@@ -1553,7 +1558,7 @@ function renderExpenses(){
       );
       const fullyPaidTag = isFullyPaid ? `<span class="fully-paid-tag"><span class="dot"></span>FULLY PAID</span>` : '';
       const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
-      const pm = e.paymentMethod === 'card' ? 'card' : 'cash';
+      const pm = e.paymentMethod === 'card' ? `${e.cardName ? escapeHtml(e.cardName) + ' ' : ''}card` : 'cash';
       return `<div class="expense" data-type="expense" data-id="${e.id}">
         <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
         <div class="body">
@@ -1729,6 +1734,7 @@ async function openAddModal(expenseToEdit){
     selectedCurrency = expenseToEdit.currency || 'PHP';
     selectedPaidBy = expenseToEdit.paidBy;
     selectedPaymentMethod = expenseToEdit.paymentMethod || 'cash';
+    document.getElementById('expenseCardName').value = expenseToEdit.cardName || '';
     if (expenseToEdit.shares){
       splitMode = 'exact';
       PEOPLE.forEach(p => exactAmounts[p] = expenseToEdit.shares[p] != null ? String(expenseToEdit.shares[p]) : '');
@@ -1747,6 +1753,7 @@ async function openAddModal(expenseToEdit){
     selectedCurrency = 'PHP';
     selectedPaidBy = 'Tin';
     selectedPaymentMethod = 'cash';
+    document.getElementById('expenseCardName').value = '';
     splitMode = 'equal';
     selectedSplit = new Set(PEOPLE);
     PEOPLE.forEach(p => exactAmounts[p] = '');
@@ -1859,7 +1866,7 @@ function renderDetailView(){
           <div class="cat-icon">${cat.icon}</div>
           <div style="flex:1;min-width:0;">
             <div class="detail-title">${escapeHtml(e.desc)}</div>
-            <div class="detail-date">${cat.label} · ${e.paymentMethod === 'card' ? 'Card' : 'Cash'} · ${formatDate(e.ts)}</div>
+            <div class="detail-date">${cat.label} · ${e.paymentMethod === 'card' ? (e.cardName ? escapeHtml(e.cardName) + ' Card' : 'Card') : 'Cash'} · ${formatDate(e.ts)}</div>
           </div>
           ${e.hasReceipt ? `<div class="receipt-thumb-wrap" id="receiptThumbWrap"></div>` : ''}
         </div>
@@ -1971,7 +1978,8 @@ document.getElementById('addBtn').onclick = async () => {
     id: editingExpenseId || ('e-' + Date.now()),
     ts: original ? original.ts : Date.now(),
     notes: original ? (original.notes || []) : [],
-    desc, amount: amt, currency: selectedCurrency, category: selectedCategory, paymentMethod: selectedPaymentMethod, paidBy: selectedPaidBy
+    desc, amount: amt, currency: selectedCurrency, category: selectedCategory, paymentMethod: selectedPaymentMethod, paidBy: selectedPaidBy,
+    cardName: selectedPaymentMethod === 'card' ? document.getElementById('expenseCardName').value.trim() : ''
   };
 
   if (splitMode === 'exact'){
