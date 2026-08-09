@@ -88,6 +88,7 @@
   }
 
   .avatars{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .people-group{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}
   .person-pill{
     padding:7px 16px;border-radius:20px;border:none;cursor:pointer;
     font-family:'Space Mono',monospace;font-weight:400;font-size:12.5px;
@@ -1167,7 +1168,7 @@ function renderAvatars(){
     return `<button class="person-pill ${currentView===p?'active':''}"
       style="background:${COLORS[p]};opacity:${dim?0.4:1}" data-v="${p}">${p}</button>`;
   }).join('');
-  el.innerHTML = homeBtn + totalsBtn + peopleBtns;
+  el.innerHTML = homeBtn + totalsBtn + `<div class="people-group">${peopleBtns}</div>`;
   el.querySelectorAll('.person-pill').forEach(btn=>{
     btn.onclick = () => {
       currentView = btn.dataset.v;
