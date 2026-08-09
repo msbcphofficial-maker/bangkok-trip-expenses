@@ -98,6 +98,7 @@
   .person-pill:active{transform:scale(0.97);}
   .home-pill{background:var(--ink) !important;opacity:1 !important;}
   .totals-pill{background:var(--teal) !important;color:#fff !important;opacity:1 !important;}
+  .calendar-pill{background:var(--olive) !important;color:#fff !important;opacity:1 !important;}
   .icon-pill{
     width:34px;height:34px;padding:0;border-radius:50%;
     display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -581,6 +582,10 @@
 
     <div class="section-title" id="activityTitle">Activity</div>
     <div id="expenseList"></div>
+    <div id="calendarView" style="display:none;">
+      <div class="day-tabs" id="calendarDayTabs"></div>
+      <div id="calendarDayList"></div>
+    </div>
   </div>
 
   <div id="detailView" style="display:none;">
@@ -760,7 +765,8 @@ const PH_PATHS = {
   refresh: "M240,56v48a8,8,0,0,1-8,8H184a8,8,0,0,1,0-16H211.4L184.81,71.64l-.25-.24a80,80,0,1,0-1.67,114.78,8,8,0,0,1,11,11.63A95.44,95.44,0,0,1,128,224h-1.32A96,96,0,1,1,195.75,60L224,85.8V56a8,8,0,1,1,16,0Z",
   database: "M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z",
   download: "M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z",
-  chartDonut: "M128,24a8,8,0,0,0-8,8V88a8,8,0,0,0,8,8,32,32,0,1,1-27.72,16,8,8,0,0,0-2.93-10.93l-48.5-28A8,8,0,0,0,37.92,76,104,104,0,1,0,128,24ZM48.09,91.1,83,111.26A48.09,48.09,0,0,0,80,128c0,1.53.08,3,.22,4.52L41.28,143A88.16,88.16,0,0,1,48.09,91.1Zm-2.67,67.31,39-10.44A48.1,48.1,0,0,0,120,175.32v40.31A88.2,88.2,0,0,1,45.42,158.41ZM136,215.63V175.32a48,48,0,0,0,0-94.65V40.36a88,88,0,0,1,0,175.27Z"
+  chartDonut: "M128,24a8,8,0,0,0-8,8V88a8,8,0,0,0,8,8,32,32,0,1,1-27.72,16,8,8,0,0,0-2.93-10.93l-48.5-28A8,8,0,0,0,37.92,76,104,104,0,1,0,128,24ZM48.09,91.1,83,111.26A48.09,48.09,0,0,0,80,128c0,1.53.08,3,.22,4.52L41.28,143A88.16,88.16,0,0,1,48.09,91.1Zm-2.67,67.31,39-10.44A48.1,48.1,0,0,0,120,175.32v40.31A88.2,88.2,0,0,1,45.42,158.41ZM136,215.63V175.32a48,48,0,0,0,0-94.65V40.36a88,88,0,0,1,0,175.27Z",
+  calendarBlank: "M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"
 };
 function phIcon(name, px, color){
   const style = color ? ` style="color:${color}"` : '';
@@ -1186,12 +1192,13 @@ function renderAvatars(){
   const el = document.getElementById('avatars');
   const homeBtn = `<button class="person-pill home-pill icon-pill ${currentView==='home'?'active':''}" data-v="home" title="Home" aria-label="Home">${phIcon('house',15)}</button>`;
   const totalsBtn = `<button class="person-pill totals-pill icon-pill ${currentView==='totals'?'active':''}" data-v="totals" title="Overview" aria-label="Overview">${phIcon('chartDonut',15)}</button>`;
+  const calendarBtn = `<button class="person-pill calendar-pill icon-pill ${currentView==='calendar'?'active':''}" data-v="calendar" title="Calendar" aria-label="Calendar">${phIcon('calendarBlank',15)}</button>`;
   const peopleBtns = PEOPLE.map(p => {
     const dim = PEOPLE.includes(currentView) && currentView !== p;
     return `<button class="person-pill ${currentView===p?'active':''}"
       style="background:${COLORS[p]};opacity:${dim?0.4:1}" data-v="${p}">${p}</button>`;
   }).join('');
-  el.innerHTML = homeBtn + totalsBtn + `<div class="people-group">${peopleBtns}</div>`;
+  el.innerHTML = homeBtn + totalsBtn + calendarBtn + `<div class="people-group">${peopleBtns}</div>`;
   el.querySelectorAll('.person-pill').forEach(btn=>{
     btn.onclick = () => {
       currentView = btn.dataset.v;
@@ -1215,7 +1222,7 @@ function updateActivityTitle(){
       updateView();
     };
   } else {
-    el.innerHTML = `<span>Activity</span>`;
+    el.innerHTML = `<span>${currentView === 'calendar' ? 'Calendar' : 'Activity'}</span>`;
   }
 }
 
@@ -1570,23 +1577,87 @@ function updateView(){
     return;
   }
   const isTotals = currentView === 'totals';
+  const isCalendar = currentView === 'calendar';
   document.getElementById('summaryCard').style.display = isTotals ? '' : 'none';
   document.getElementById('insightsCard').style.display = isTotals ? '' : 'none';
   document.getElementById('activityTitle').style.display = isTotals ? 'none' : '';
-  document.getElementById('expenseList').style.display = isTotals ? 'none' : '';
+  document.getElementById('expenseList').style.display = (isTotals || isCalendar) ? 'none' : '';
+  document.getElementById('calendarView').style.display = isCalendar ? '' : 'none';
   const isPerson = PEOPLE.includes(currentView);
   document.getElementById('personSummary').style.display = isPerson ? '' : 'none';
   document.getElementById('openAddExpenseBtn').style.display = (currentView === 'home') ? '' : 'none';
   if (isTotals) renderInsights();
   if (isPerson) renderPersonSummary(currentView);
+  if (isCalendar) renderCalendarView();
+}
+
+function renderActivityItemHtml(item){
+  if (item.type === 'expense'){
+    const e = item.data;
+    const splitTxt = e.shares
+      ? 'exact: ' + Object.entries(e.shares).map(([p,v]) => p + ' ' + fmt(v, e.currency)).join(', ')
+      : `<span class="split-avatars">${e.split.map(p => `<span class="split-dot" style="background:${COLORS[p]}" title="${p}">${p[0]}</span>`).join('')}</span>`;
+    const nonPayerSplit = e.split.filter(p => p !== e.paidBy);
+    const isFullyPaid = nonPayerSplit.length > 0 && nonPayerSplit.every(p =>
+      (state.payments||[]).some(pm => pm.expenseId === e.id && pm.from === p)
+    );
+    const fullyPaidTag = isFullyPaid ? `<span class="fully-paid-tag"><span class="dot"></span>FULLY PAID</span>` : '';
+    const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
+    const pm = e.paymentMethod === 'card' ? `${e.cardName ? escapeHtml(e.cardName) + ' ' : ''}card` : 'cash';
+    return `<div class="expense" data-type="expense" data-id="${e.id}">
+      <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
+      <div class="body">
+        <div class="desc">${escapeHtml(e.desc)}</div>
+        <div class="meta">
+          <span class="tag" style="background:${COLORS[e.paidBy]}22;color:${COLORS[e.paidBy]}">${e.paidBy} paid</span>
+          <span class="tag pm-tag">${pm}</span>
+          ${e.hasReceipt ? `<span class="receipt-badge" title="Has a receipt photo">${phIcon('camera',14)}</span>` : ''}
+          ${splitTxt}
+          ${fullyPaidTag}
+        </div>
+      </div>
+      <div class="right">
+        <div class="amt">${fmt(e.amount, e.currency)}</div>
+        <button class="del" data-type="expense" data-id="${e.id}" title="Delete expense">${phIcon('trash',15)}</button>
+      </div>
+    </div>`;
+  } else {
+    const p = item.data;
+    const linkedExpense = p.expenseId ? state.expenses.find(x => x.id === p.expenseId) : null;
+    return `<div class="payment" data-type="payment" data-id="${p.id}">
+      <div class="cat-icon" title="Settled">${phIcon('checkCircle',20,'var(--jade)')}</div>
+      <div class="body">
+        <div class="ptxt">${p.from} <span class="arrow">→</span> ${p.to} <span class="arrow">·</span> settled</div>
+        ${linkedExpense ? `<div class="date">${escapeHtml(linkedExpense.desc)}</div>` : ''}
+      </div>
+      <div class="pright">
+        <div class="amt">${fmt(p.amount, p.currency)}</div>
+        <button class="del" data-type="payment" data-id="${p.id}" title="Undo payment">${phIcon('undo',15)}</button>
+      </div>
+    </div>`;
+  }
+}
+
+function attachDelButtons(container){
+  container.querySelectorAll('.del').forEach(btn=>{
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const ok = await deleteItem(btn.dataset.type, btn.dataset.id);
+      if (ok) render();
+    };
+  });
+}
+
+function getAllActivityItems(){
+  return [
+    ...state.expenses.map(e => ({type:'expense', ts:e.ts||Date.now(), data:e})),
+    ...(state.payments||[]).map(p => ({type:'payment', ts:p.ts||Date.now(), data:p}))
+  ];
 }
 
 function renderExpenses(){
   const el = document.getElementById('expenseList');
-  let items = [
-    ...state.expenses.map(e => ({type:'expense', ts:e.ts||Date.now(), data:e})),
-    ...(state.payments||[]).map(p => ({type:'payment', ts:p.ts||Date.now(), data:p}))
-  ];
+  let items = getAllActivityItems();
   if (PEOPLE.includes(currentView)){
     items = items.filter(item => item.type === 'expense'
       ? (item.data.paidBy === currentView || item.data.split.includes(currentView))
@@ -1605,58 +1676,55 @@ function renderExpenses(){
       dateSep = `<div class="activity-date-sep">${formatDate(item.ts)}</div>`;
       lastDateKey = dateKey;
     }
-    if (item.type === 'expense'){
-      const e = item.data;
-      const splitTxt = e.shares
-        ? 'exact: ' + Object.entries(e.shares).map(([p,v]) => p + ' ' + fmt(v, e.currency)).join(', ')
-        : `<span class="split-avatars">${e.split.map(p => `<span class="split-dot" style="background:${COLORS[p]}" title="${p}">${p[0]}</span>`).join('')}</span>`;
-      const nonPayerSplit = e.split.filter(p => p !== e.paidBy);
-      const isFullyPaid = nonPayerSplit.length > 0 && nonPayerSplit.every(p =>
-        (state.payments||[]).some(pm => pm.expenseId === e.id && pm.from === p)
-      );
-      const fullyPaidTag = isFullyPaid ? `<span class="fully-paid-tag"><span class="dot"></span>FULLY PAID</span>` : '';
-      const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
-      const pm = e.paymentMethod === 'card' ? `${e.cardName ? escapeHtml(e.cardName) + ' ' : ''}card` : 'cash';
-      return `${dateSep}<div class="expense" data-type="expense" data-id="${e.id}">
-        <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
-        <div class="body">
-          <div class="desc">${escapeHtml(e.desc)}</div>
-          <div class="meta">
-            <span class="tag" style="background:${COLORS[e.paidBy]}22;color:${COLORS[e.paidBy]}">${e.paidBy} paid</span>
-            <span class="tag pm-tag">${pm}</span>
-            ${e.hasReceipt ? `<span class="receipt-badge" title="Has a receipt photo">${phIcon('camera',14)}</span>` : ''}
-            ${splitTxt}
-            ${fullyPaidTag}
-          </div>
-        </div>
-        <div class="right">
-          <div class="amt">${fmt(e.amount, e.currency)}</div>
-          <button class="del" data-type="expense" data-id="${e.id}" title="Delete expense">${phIcon('trash',15)}</button>
-        </div>
-      </div>`;
-    } else {
-      const p = item.data;
-      const linkedExpense = p.expenseId ? state.expenses.find(x => x.id === p.expenseId) : null;
-      return `${dateSep}<div class="payment" data-type="payment" data-id="${p.id}">
-        <div class="cat-icon" title="Settled">${phIcon('checkCircle',20,'var(--jade)')}</div>
-        <div class="body">
-          <div class="ptxt">${p.from} <span class="arrow">→</span> ${p.to} <span class="arrow">·</span> settled</div>
-          ${linkedExpense ? `<div class="date">${escapeHtml(linkedExpense.desc)}</div>` : ''}
-        </div>
-        <div class="pright">
-          <div class="amt">${fmt(p.amount, p.currency)}</div>
-          <button class="del" data-type="payment" data-id="${p.id}" title="Undo payment">${phIcon('undo',15)}</button>
-        </div>
-      </div>`;
-    }
+    return dateSep + renderActivityItemHtml(item);
   }).join('');
-  el.querySelectorAll('.del').forEach(btn=>{
-    btn.onclick = async (e) => {
-      e.stopPropagation();
-      const ok = await deleteItem(btn.dataset.type, btn.dataset.id);
-      if (ok) render();
+  attachDelButtons(el);
+}
+
+let selectedCalendarDay = null;
+
+function renderCalendarView(){
+  const tabsEl = document.getElementById('calendarDayTabs');
+  const listEl = document.getElementById('calendarDayList');
+  const items = getAllActivityItems();
+
+  if (items.length === 0){
+    tabsEl.innerHTML = '';
+    listEl.innerHTML = `<div class="empty">No expenses yet.</div>`;
+    return;
+  }
+
+  const days = {};
+  items.forEach(item => {
+    const dt = new Date(item.ts);
+    const dk = dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate();
+    if (!days[dk]) days[dk] = {
+      key: dk, ts: item.ts,
+      month: dt.toLocaleDateString('en-US',{month:'short'}).toUpperCase(),
+      dayNum: dt.getDate()
     };
   });
+  const dayList = Object.values(days).sort((a,b) => a.ts - b.ts);
+
+  if (!selectedCalendarDay || !days[selectedCalendarDay]){
+    selectedCalendarDay = dayList[dayList.length - 1].key;
+  }
+
+  tabsEl.innerHTML = dayList.map(d => `
+    <button class="day-tab ${d.key===selectedCalendarDay?'active':''}" data-key="${d.key}">
+      <span class="dt-month">${d.month}</span><span class="dt-day">${d.dayNum}</span>
+    </button>`).join('');
+  tabsEl.querySelectorAll('.day-tab').forEach(btn => {
+    btn.onclick = () => { selectedCalendarDay = btn.dataset.key; renderCalendarView(); };
+  });
+
+  const dayItems = items.filter(item => {
+    const dt = new Date(item.ts);
+    return (dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate()) === selectedCalendarDay;
+  }).sort((a,b) => b.ts - a.ts);
+
+  listEl.innerHTML = dayItems.map(renderActivityItemHtml).join('');
+  attachDelButtons(listEl);
 }
 
 async function deleteItem(type, id){
@@ -1856,6 +1924,12 @@ document.getElementById('backBtn').onclick = () => {
   updateView();
 };
 document.getElementById('expenseList').addEventListener('click', (e) => {
+  if (e.target.closest('.del')) return;
+  const card = e.target.closest('.expense, .payment');
+  if (!card) return;
+  openDetail(card.dataset.type, card.dataset.id);
+});
+document.getElementById('calendarDayList').addEventListener('click', (e) => {
   if (e.target.closest('.del')) return;
   const card = e.target.closest('.expense, .payment');
   if (!card) return;
