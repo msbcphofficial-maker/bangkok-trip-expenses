@@ -179,6 +179,12 @@
     color:var(--ink-soft);margin:24px 0 10px 2px;
     display:flex;justify-content:space-between;align-items:center;
   }
+  .activity-date-sep{
+    font-family:'Space Mono',monospace;
+    font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+    color:var(--ink-soft);margin:18px 2px 8px;
+  }
+  .activity-date-sep:first-child{margin-top:0;}
   .reset-link{
     text-transform:none;letter-spacing:0;color:var(--marigold);
     cursor:pointer;font-weight:400;
@@ -1590,7 +1596,14 @@ function renderExpenses(){
     return;
   }
   items.sort((a,b) => b.ts - a.ts);
+  let lastDateKey = null;
   el.innerHTML = items.map(item => {
+    const dateKey = new Date(item.ts).toDateString();
+    let dateSep = '';
+    if (dateKey !== lastDateKey){
+      dateSep = `<div class="activity-date-sep">${formatDate(item.ts)}</div>`;
+      lastDateKey = dateKey;
+    }
     if (item.type === 'expense'){
       const e = item.data;
       const splitTxt = e.shares
@@ -1603,11 +1616,10 @@ function renderExpenses(){
       const fullyPaidTag = isFullyPaid ? `<span class="fully-paid-tag"><span class="dot"></span>FULLY PAID</span>` : '';
       const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
       const pm = e.paymentMethod === 'card' ? `${e.cardName ? escapeHtml(e.cardName) + ' ' : ''}card` : 'cash';
-      return `<div class="expense" data-type="expense" data-id="${e.id}">
+      return `${dateSep}<div class="expense" data-type="expense" data-id="${e.id}">
         <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
         <div class="body">
           <div class="desc">${escapeHtml(e.desc)}</div>
-          <div class="date">${formatDate(e.ts)}</div>
           <div class="meta">
             <span class="tag" style="background:${COLORS[e.paidBy]}22;color:${COLORS[e.paidBy]}">${e.paidBy} paid</span>
             <span class="tag pm-tag">${pm}</span>
@@ -1624,11 +1636,11 @@ function renderExpenses(){
     } else {
       const p = item.data;
       const linkedExpense = p.expenseId ? state.expenses.find(x => x.id === p.expenseId) : null;
-      return `<div class="payment" data-type="payment" data-id="${p.id}">
+      return `${dateSep}<div class="payment" data-type="payment" data-id="${p.id}">
         <div class="cat-icon" title="Settled">${phIcon('checkCircle',20,'var(--jade)')}</div>
         <div class="body">
           <div class="ptxt">${p.from} <span class="arrow">→</span> ${p.to} <span class="arrow">·</span> settled</div>
-          <div class="date">${formatDate(p.ts)}${linkedExpense ? ` · ${escapeHtml(linkedExpense.desc)}` : ''}</div>
+          ${linkedExpense ? `<div class="date">${escapeHtml(linkedExpense.desc)}</div>` : ''}
         </div>
         <div class="pright">
           <div class="amt">${fmt(p.amount, p.currency)}</div>
