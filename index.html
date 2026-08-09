@@ -453,6 +453,12 @@
   .stat-bar-track{height:8px;border-radius:6px;background:var(--page);overflow:hidden;}
   .stat-bar-fill{height:100%;border-radius:6px;}
   .stat-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);}
+  .cat-donut-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:16px;}
+  .cat-legend{width:100%;}
+  .cat-legend-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;}
+  .cat-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .cat-legend-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cat-legend-val{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink-soft);flex-shrink:0;white-space:nowrap;}
   .top-spender{
     display:flex;align-items:center;gap:10px;background:var(--page);
     border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;
@@ -748,6 +754,16 @@ const CATEGORIES = [
   { key:"other",    label:"Other",           icon:phIcon("sparkle",18) }
 ];
 const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
+const CATEGORY_COLORS = {
+  dining: "var(--coral)",
+  groceries: "var(--olive)",
+  hotel: "var(--teal)",
+  transport: "var(--jade)",
+  insurance: "var(--marigold)",
+  clothing: "#8B6BAE",
+  services: "#C2547C",
+  other: "var(--ink-soft)"
+};
 const SOFT   = { Tin: "marigold-soft", Ada: "jade-soft", Carlin: "coral-soft" };
 const STORAGE_KEY = "bangkok-2026-expenses";
 
@@ -1349,6 +1365,43 @@ function statRow(label, amount, total, cur, color, iconHtml){
   </div>`;
 }
 
+function renderCategoryDonut(catEntries, total, cur){
+  const size = 150, r = 56, cx = size/2, cy = size/2, sw = 20;
+  const circumference = 2 * Math.PI * r;
+  let acc = 0;
+  const segments = catEntries.map(([key, amount]) => {
+    const color = CATEGORY_COLORS[key] || 'var(--ink-soft)';
+    const dash = (amount/total) * circumference;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}"
+      stroke-dasharray="${dash} ${circumference-dash}" stroke-dashoffset="${-acc}"
+      transform="rotate(-90 ${cx} ${cy})"></circle>`;
+    acc += dash;
+    return seg;
+  }).join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${segments}
+    <text x="${cx}" y="${cy}" text-anchor="middle" dy="0.35em" fill="var(--ink)" font-family="'Space Mono',monospace" font-size="13">${fmt(total,cur)}</text>
+  </svg>`;
+}
+
+function renderCategoryChart(catEntries, total, cur){
+  if (!catEntries.length || total <= 0) return `<div class="empty">No expenses this day.</div>`;
+  const legendRows = catEntries.map(([key,amount]) => {
+    const cat = CATEGORY_MAP[key] || CATEGORY_MAP.other;
+    const color = CATEGORY_COLORS[key] || 'var(--ink-soft)';
+    const pct = Math.round((amount/total)*100);
+    return `<div class="cat-legend-row">
+      <span class="cat-legend-dot" style="background:${color}"></span>
+      <span class="cat-legend-label">${cat.label}</span>
+      <span class="cat-legend-val">${fmt(amount,cur)} · ${pct}%</span>
+    </div>`;
+  }).join('');
+  return `<div class="cat-donut-wrap">
+    ${renderCategoryDonut(catEntries, total, cur)}
+    <div class="cat-legend">${legendRows}</div>
+  </div>`;
+}
+
 function renderInsights(){
   const el = document.getElementById('insightsCard');
   const data = computeInsights();
@@ -1377,10 +1430,7 @@ function renderInsights(){
     const activeDayObj = d.days[activeDay];
 
     const catEntries = Object.entries(dayStats.cats).sort((a,b) => b[1]-a[1]);
-    const catRows = catEntries.length ? catEntries.map(([key,amount]) => {
-      const cat = CATEGORY_MAP[key] || CATEGORY_MAP.other;
-      return statRow(cat.label, amount, dayStats.total, cur, 'var(--jade)', cat.icon);
-    }).join('') : `<div class="empty">No expenses this day.</div>`;
+    const catChart = renderCategoryChart(catEntries, dayStats.total, cur);
 
     const methodRows = dayStats.total > 0 ? (
       statRow('Cash', dayStats.methods.cash, dayStats.total, cur, 'var(--teal)', phIcon('money',14)) +
@@ -1405,7 +1455,7 @@ function renderInsights(){
         <div class="day-total-line">${activeDayObj.label} · <span>${fmt(dayStats.total,cur)}</span></div>
 
         <div class="stat-group-title">By category</div>
-        ${catRows}
+        ${catChart}
 
         <div class="stat-group-title">Payment method</div>
         ${methodRows}
