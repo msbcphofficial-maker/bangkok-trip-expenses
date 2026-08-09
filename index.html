@@ -760,6 +760,22 @@ function phIcon(name, px, color){
   return `<svg class="ph-icon" width="${px}" height="${px}" viewBox="0 0 256 256" fill="currentColor"${style}><path d="${PH_PATHS[name]}"/></svg>`;
 }
 
+const FLAG_SVGS = {
+  PH: `<svg width="18" height="12" viewBox="0 0 30 20" style="vertical-align:-2px;border-radius:2px;flex-shrink:0;">
+    <rect width="30" height="10" fill="#0038A8"/>
+    <rect width="30" height="10" y="10" fill="#CE1126"/>
+    <polygon points="0,0 0,20 17.3,10" fill="#FFFFFF"/>
+    <circle cx="5.8" cy="10" r="2.6" fill="#FCD116"/>
+  </svg>`,
+  TH: `<svg width="18" height="12" viewBox="0 0 30 20" style="vertical-align:-2px;border-radius:2px;flex-shrink:0;">
+    <rect width="30" height="20" fill="#F4F5F8"/>
+    <rect width="30" height="3.33" y="0" fill="#A51931"/>
+    <rect width="30" height="3.33" y="16.67" fill="#A51931"/>
+    <rect width="30" height="6.67" y="6.67" fill="#2D2A4A"/>
+  </svg>`
+};
+function flagIcon(code){ return FLAG_SVGS[code] || ''; }
+
 const CATEGORIES = [
   { key:"dining",   label:"Dining out",      icon:phIcon("forkKnife",18) },
   { key:"groceries",label:"Groceries",       icon:phIcon("shoppingCart",18) },
@@ -1150,7 +1166,7 @@ function renderPaymentMethodSelect(){
 
 function renderCurrSelect(){
   const el = document.getElementById('currSelect');
-  const opts = [["PHP","🇵🇭 ₱ PHP"], ["THB","🇹🇭 ฿ THB"]];
+  const opts = [["PHP",`${flagIcon('PH')} ₱ PHP`], ["THB",`${flagIcon('TH')} ฿ THB`]];
   el.innerHTML = opts.map(([code,label]) =>
     `<button class="curr-btn ${selectedCurrency===code?'active':''}" data-c="${code}">${label}</button>`
   ).join('');
