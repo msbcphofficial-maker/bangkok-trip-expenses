@@ -88,8 +88,12 @@
   .person-pill.active{opacity:1;box-shadow:0 0 0 2px var(--ink);}
   .person-pill:active{transform:scale(0.97);}
   .home-pill{background:var(--ink) !important;opacity:1 !important;}
-  .home-pill .ph-icon{vertical-align:-2px;margin-right:3px;}
   .totals-pill{background:var(--teal) !important;color:#fff !important;opacity:1 !important;}
+  .icon-pill{
+    width:34px;height:34px;padding:0;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .icon-pill .ph-icon{margin:0;}
 
   .card{
     background:var(--paper);
@@ -730,7 +734,8 @@ const PH_PATHS = {
   camera: "M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z",
   refresh: "M240,56v48a8,8,0,0,1-8,8H184a8,8,0,0,1,0-16H211.4L184.81,71.64l-.25-.24a80,80,0,1,0-1.67,114.78,8,8,0,0,1,11,11.63A95.44,95.44,0,0,1,128,224h-1.32A96,96,0,1,1,195.75,60L224,85.8V56a8,8,0,1,1,16,0Z",
   database: "M128,24C74.17,24,32,48.6,32,80v96c0,31.4,42.17,56,96,56s96-24.6,96-56V80C224,48.6,181.83,24,128,24Zm80,104c0,9.62-7.88,19.43-21.61,26.92C170.93,163.35,150.19,168,128,168s-42.93-4.65-58.39-13.08C55.88,147.43,48,137.62,48,128V111.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64ZM69.61,53.08C85.07,44.65,105.81,40,128,40s42.93,4.65,58.39,13.08C200.12,60.57,208,70.38,208,80s-7.88,19.43-21.61,26.92C170.93,115.35,150.19,120,128,120s-42.93-4.65-58.39-13.08C55.88,99.43,48,89.62,48,80S55.88,60.57,69.61,53.08ZM186.39,202.92C170.93,211.35,150.19,216,128,216s-42.93-4.65-58.39-13.08C55.88,195.43,48,185.62,48,176V159.36c17.06,15,46.23,24.64,80,24.64s62.94-9.68,80-24.64V176C208,185.62,200.12,195.43,186.39,202.92Z",
-  download: "M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"
+  download: "M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z",
+  chartDonut: "M128,24a8,8,0,0,0-8,8V88a8,8,0,0,0,8,8,32,32,0,1,1-27.72,16,8,8,0,0,0-2.93-10.93l-48.5-28A8,8,0,0,0,37.92,76,104,104,0,1,0,128,24ZM48.09,91.1,83,111.26A48.09,48.09,0,0,0,80,128c0,1.53.08,3,.22,4.52L41.28,143A88.16,88.16,0,0,1,48.09,91.1Zm-2.67,67.31,39-10.44A48.1,48.1,0,0,0,120,175.32v40.31A88.2,88.2,0,0,1,45.42,158.41ZM136,215.63V175.32a48,48,0,0,0,0-94.65V40.36a88,88,0,0,1,0,175.27Z"
 };
 function phIcon(name, px, color){
   const style = color ? ` style="color:${color}"` : '';
@@ -1128,8 +1133,8 @@ function renderCurrSelect(){
 
 function renderAvatars(){
   const el = document.getElementById('avatars');
-  const homeBtn = `<button class="person-pill home-pill ${currentView==='home'?'active':''}" data-v="home">${phIcon('house',13)} Home</button>`;
-  const totalsBtn = `<button class="person-pill totals-pill ${currentView==='totals'?'active':''}" data-v="totals">Overview</button>`;
+  const homeBtn = `<button class="person-pill home-pill icon-pill ${currentView==='home'?'active':''}" data-v="home" title="Home" aria-label="Home">${phIcon('house',15)}</button>`;
+  const totalsBtn = `<button class="person-pill totals-pill icon-pill ${currentView==='totals'?'active':''}" data-v="totals" title="Overview" aria-label="Overview">${phIcon('chartDonut',15)}</button>`;
   const peopleBtns = PEOPLE.map(p => {
     const dim = PEOPLE.includes(currentView) && currentView !== p;
     return `<button class="person-pill ${currentView===p?'active':''}"
