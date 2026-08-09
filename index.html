@@ -1150,7 +1150,7 @@ function renderPaymentMethodSelect(){
 
 function renderCurrSelect(){
   const el = document.getElementById('currSelect');
-  const opts = [["PHP","₱ PHP"], ["THB","฿ THB"]];
+  const opts = [["PHP","🇵🇭 ₱ PHP"], ["THB","🇹🇭 ฿ THB"]];
   el.innerHTML = opts.map(([code,label]) =>
     `<button class="curr-btn ${selectedCurrency===code?'active':''}" data-c="${code}">${label}</button>`
   ).join('');
