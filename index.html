@@ -499,6 +499,14 @@
   .day-tab .dt-month{display:block;font-size:9px;letter-spacing:0.08em;opacity:0.75;}
   .day-tab .dt-day{display:block;font-size:16px;}
   .day-tab.active{border-color:var(--marigold);background:var(--marigold-soft);color:var(--ink);}
+  .calendar-filters{margin-bottom:14px;}
+  .calendar-filter-row{display:flex;gap:8px;margin-top:8px;}
+  .calendar-filter-row select{
+    flex:1.6;min-width:0;padding:10px 8px;border-radius:9px;
+    border:1px solid var(--paper-line);background:#fff;
+    font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink);
+  }
+  .calendar-filter-row input{flex:1;min-width:0;width:auto;}
   .day-total-line{
     font-size:13px;color:var(--ink-soft);margin-bottom:16px;
     padding-bottom:14px;border-bottom:1px dashed var(--paper-line);
@@ -583,6 +591,14 @@
     <div class="section-title" id="activityTitle">Activity</div>
     <div id="expenseList"></div>
     <div id="calendarView" style="display:none;">
+      <div class="calendar-filters">
+        <input type="text" id="calendarSearchInput" placeholder="Search by name, category, card...">
+        <div class="calendar-filter-row">
+          <select id="calendarCategoryFilter"></select>
+          <input type="text" inputmode="decimal" id="calendarMinAmount" placeholder="Min">
+          <input type="text" inputmode="decimal" id="calendarMaxAmount" placeholder="Max">
+        </div>
+      </div>
       <div class="day-tabs" id="calendarDayTabs"></div>
       <div id="calendarDayList"></div>
     </div>
@@ -1681,21 +1697,56 @@ function renderExpenses(){
   attachDelButtons(el);
 }
 
-let selectedCalendarDay = null;
+let selectedCalendarDay = null; // a day key, or 'all'
+let calendarSearchQuery = '';
+let calendarCategoryFilter = 'all';
+let calendarMinAmount = '';
+let calendarMaxAmount = '';
+
+function getFilteredCalendarItems(){
+  const q = calendarSearchQuery.trim().toLowerCase();
+  const min = parseFloat(calendarMinAmount);
+  const max = parseFloat(calendarMaxAmount);
+  return getAllActivityItems().filter(item => {
+    if (item.type === 'expense'){
+      const e = item.data;
+      if (calendarCategoryFilter !== 'all' && e.category !== calendarCategoryFilter) return false;
+      if (!isNaN(min) && e.amount < min) return false;
+      if (!isNaN(max) && e.amount > max) return false;
+      if (q){
+        const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
+        const haystack = [e.desc, cat.label, e.paidBy, ...(e.split||[]), e.paymentMethod, e.cardName||''].join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+    } else {
+      const p = item.data;
+      if (calendarCategoryFilter !== 'all') return false; // payments aren't categorized
+      if (!isNaN(min) && p.amount < min) return false;
+      if (!isNaN(max) && p.amount > max) return false;
+      if (q){
+        const linkedExpense = p.expenseId ? state.expenses.find(x => x.id === p.expenseId) : null;
+        const haystack = [p.from, p.to, p.method||'', p.cardName||'', linkedExpense ? linkedExpense.desc : ''].join(' ').toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+    }
+    return true;
+  });
+}
 
 function renderCalendarView(){
   const tabsEl = document.getElementById('calendarDayTabs');
   const listEl = document.getElementById('calendarDayList');
-  const items = getAllActivityItems();
 
-  if (items.length === 0){
+  if (getAllActivityItems().length === 0){
     tabsEl.innerHTML = '';
     listEl.innerHTML = `<div class="empty">No expenses yet.</div>`;
     return;
   }
 
+  const filteredItems = getFilteredCalendarItems();
+
   const days = {};
-  items.forEach(item => {
+  filteredItems.forEach(item => {
     const dt = new Date(item.ts);
     const dk = dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate();
     if (!days[dk]) days[dk] = {
@@ -1706,11 +1757,14 @@ function renderCalendarView(){
   });
   const dayList = Object.values(days).sort((a,b) => a.ts - b.ts);
 
-  if (!selectedCalendarDay || !days[selectedCalendarDay]){
-    selectedCalendarDay = dayList[dayList.length - 1].key;
+  if (!selectedCalendarDay || (selectedCalendarDay !== 'all' && !days[selectedCalendarDay])){
+    selectedCalendarDay = dayList.length ? dayList[dayList.length - 1].key : 'all';
   }
 
-  tabsEl.innerHTML = dayList.map(d => `
+  const allTab = `<button class="day-tab ${selectedCalendarDay==='all'?'active':''}" data-key="all">
+    <span class="dt-month">ALL</span><span class="dt-day">${filteredItems.length}</span>
+  </button>`;
+  tabsEl.innerHTML = allTab + dayList.map(d => `
     <button class="day-tab ${d.key===selectedCalendarDay?'active':''}" data-key="${d.key}">
       <span class="dt-month">${d.month}</span><span class="dt-day">${d.dayNum}</span>
     </button>`).join('');
@@ -1718,14 +1772,34 @@ function renderCalendarView(){
     btn.onclick = () => { selectedCalendarDay = btn.dataset.key; renderCalendarView(); };
   });
 
-  const dayItems = items.filter(item => {
+  const dayItems = (selectedCalendarDay === 'all' ? filteredItems : filteredItems.filter(item => {
     const dt = new Date(item.ts);
     return (dt.getFullYear() + '-' + dt.getMonth() + '-' + dt.getDate()) === selectedCalendarDay;
-  }).sort((a,b) => b.ts - a.ts);
+  })).sort((a,b) => b.ts - a.ts);
 
-  listEl.innerHTML = dayItems.map(renderActivityItemHtml).join('');
+  listEl.innerHTML = dayItems.length ? dayItems.map(renderActivityItemHtml).join('') : `<div class="empty">No matching activity.</div>`;
   attachDelButtons(listEl);
 }
+
+const calendarCategoryFilterEl = document.getElementById('calendarCategoryFilter');
+calendarCategoryFilterEl.innerHTML = `<option value="all">All categories</option>` +
+  CATEGORIES.map(c => `<option value="${c.key}">${c.label}</option>`).join('');
+calendarCategoryFilterEl.addEventListener('change', (e) => {
+  calendarCategoryFilter = e.target.value;
+  renderCalendarView();
+});
+document.getElementById('calendarSearchInput').addEventListener('input', (e) => {
+  calendarSearchQuery = e.target.value;
+  renderCalendarView();
+});
+document.getElementById('calendarMinAmount').addEventListener('input', (e) => {
+  calendarMinAmount = e.target.value;
+  renderCalendarView();
+});
+document.getElementById('calendarMaxAmount').addEventListener('input', (e) => {
+  calendarMaxAmount = e.target.value;
+  renderCalendarView();
+});
 
 async function deleteItem(type, id){
   const isExpense = type === 'expense';
