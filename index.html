@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="BKK XP Tracker">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#1B2A4A;
@@ -180,11 +180,12 @@
     display:flex;justify-content:space-between;align-items:center;
   }
   .activity-date-sep{
-    font-family:'Space Mono',monospace;
-    font-size:11px;letter-spacing:0.08em;text-transform:uppercase;
+    font-family:'Space Mono',monospace;font-weight:700;
+    font-size:13px;letter-spacing:0.08em;text-transform:uppercase;
     color:var(--ink-soft);margin:18px 2px 8px;
+    padding-top:14px;border-top:1px dashed var(--paper-line);
   }
-  .activity-date-sep:first-child{margin-top:0;}
+  .activity-date-sep:first-child{margin-top:0;padding-top:0;border-top:none;}
   .reset-link{
     text-transform:none;letter-spacing:0;color:var(--marigold);
     cursor:pointer;font-weight:400;
