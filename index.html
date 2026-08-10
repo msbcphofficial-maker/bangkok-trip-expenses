@@ -418,6 +418,8 @@
   .detail-row:last-child{border-bottom:none;}
   .detail-row .who{display:flex;align-items:center;gap:8px;font-size:14px;}
   .detail-note{font-size:13px;color:var(--ink-soft);line-height:1.5;margin-bottom:18px;}
+  .linked-expense-link{text-decoration:underline;cursor:pointer;}
+  .linked-expense-link:active{opacity:0.7;}
   .detail-action{
     width:100%;padding:12px;border-radius:10px;border:1.5px solid var(--coral);
     background:var(--coral-soft);color:var(--coral);font-family:'Space Mono',monospace;
@@ -1873,7 +1875,7 @@ function renderActivityItemHtml(item){
       <div class="cat-icon" title="Settled">${phIcon('checkCircle',20,'var(--jade)')}</div>
       <div class="body">
         <div class="ptxt">${p.from} <span class="arrow">→</span> ${p.to} <span class="arrow">·</span> settled</div>
-        ${linkedExpense ? `<div class="date">${escapeHtml(linkedExpense.desc)}</div>` : ''}
+        ${linkedExpense ? `<div class="date"><span class="linked-expense-link" data-id="${linkedExpense.id}">${escapeHtml(linkedExpense.desc)}</span></div>` : ''}
       </div>
       <div class="pright">
         <div class="amt">${fmt(p.amount, p.currency)}</div>
@@ -1889,6 +1891,15 @@ function attachDelButtons(container){
       e.stopPropagation();
       const ok = await deleteItem(btn.dataset.type, btn.dataset.id);
       if (ok) render();
+    };
+  });
+}
+
+function attachLinkedExpenseLinks(container){
+  container.querySelectorAll('.linked-expense-link').forEach(el=>{
+    el.onclick = (e) => {
+      e.stopPropagation();
+      openDetail('expense', el.dataset.id);
     };
   });
 }
@@ -1924,6 +1935,7 @@ function renderExpenses(){
     return dateSep + renderActivityItemHtml(item);
   }).join('');
   attachDelButtons(el);
+  attachLinkedExpenseLinks(el);
 }
 
 let selectedCalendarDay = null;
@@ -2009,6 +2021,7 @@ function renderCalendarView(){
 
   listEl.innerHTML = dayItems.length ? dayItems.map(renderActivityItemHtml).join('') : `<div class="empty">No matching activity.</div>`;
   attachDelButtons(listEl);
+  attachLinkedExpenseLinks(listEl);
 }
 
 document.getElementById('calendarSearchInput').addEventListener('input', (e) => {
@@ -2511,12 +2524,12 @@ function renderDetailView(){
           <div class="cat-icon">${phIcon('checkCircle',22,'var(--jade)')}</div>
           <div>
             <div class="detail-title">${p.from} → ${p.to}</div>
-            <div class="detail-date">Settled · ${formatDate(p.ts)}${linkedExpense ? ` · ${escapeHtml(linkedExpense.desc)}` : ''}</div>
+            <div class="detail-date">Settled · ${formatDate(p.ts)}${linkedExpense ? ` · <span class="linked-expense-link" data-id="${linkedExpense.id}">${escapeHtml(linkedExpense.desc)}</span>` : ''}</div>
           </div>
         </div>
         <div class="detail-amount">${fmt(p.amount, p.currency)}</div>
         <div class="detail-note">${linkedExpense
-          ? `This settles ${p.from}'s share of "${escapeHtml(linkedExpense.desc)}."`
+          ? `This settles ${p.from}'s share of "<span class="linked-expense-link" data-id="${linkedExpense.id}">${escapeHtml(linkedExpense.desc)}</span>."`
           : `This marks part of what ${p.from} owed ${p.to} as paid back.`}</div>
         <div class="detail-section-title">Payment</div>
         <div class="detail-row">
@@ -2529,6 +2542,7 @@ function renderDetailView(){
         </div>
         <button class="detail-action jade" id="detailUndoBtn">${phIcon('undo',15)} Undo this payment</button>
       </div>`;
+    attachLinkedExpenseLinks(el);
     document.getElementById('detailUndoBtn').onclick = async () => {
       const ok = await deleteItem('payment', p.id);
       if (ok){ detailItem = null; render(); }
