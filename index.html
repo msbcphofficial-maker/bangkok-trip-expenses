@@ -27,6 +27,8 @@
     --coral-soft:#FBE1D9;
     --teal:#3D7A99;
     --olive:#A3A92B;
+    --blue:#3D5FB3;
+    --blue-soft:#DEE4F7;
     --paper:#FBF7EF;
     --paper-line:#E4DCC8;
     --page:#F1ECE0;
@@ -232,6 +234,7 @@
   }
   .expense .del:hover{background:var(--coral-soft);}
 
+  .expense.personal{background:var(--blue-soft);border-color:var(--blue);cursor:default;}
   .payment{
     background:var(--jade-soft);
     border:1px solid var(--jade);
@@ -336,6 +339,7 @@
     font-weight:400;font-size:16px;cursor:pointer;
   }
   .fab-add:active{opacity:0.85;}
+  .personal-add-btn{background:var(--blue);}
   .csv-export-btn{
     background:var(--teal);font-size:14.5px;
     display:flex;align-items:center;justify-content:center;gap:8px;
@@ -571,6 +575,7 @@
     </header>
 
     <button class="fab-add" id="openAddExpenseBtn">+ Add an expense</button>
+    <button class="fab-add personal-add-btn" id="openAddPersonalExpenseBtn" style="display:none;">+ Add a personal expense</button>
 
     <div class="card summary" id="summaryCard" style="display:none;">
       <div class="summary-inner">
@@ -588,6 +593,11 @@
     <div class="card" id="insightsCard" style="display:none;"></div>
 
     <div class="card summary" id="personSummary" style="display:none;"></div>
+
+    <div id="personalExpensesSection" style="display:none;">
+      <div class="section-title">Personal expenses</div>
+      <div id="personalExpensesList"></div>
+    </div>
 
     <div class="section-title" id="activityTitle">Activity</div>
     <div id="expenseList"></div>
@@ -671,6 +681,30 @@
         <div class="modal-actions">
           <button class="cancel-btn" id="cancelAddBtn">Cancel</button>
           <button class="add-btn" id="addBtn">+ Add expense</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="addPersonalModalOverlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="addPersonalModalTitle">Add a personal expense</h2>
+        <button class="modal-close" id="closeAddPersonalModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="err" id="personalFormErr">Add a description and amount.</div>
+        <label>What was it for</label>
+        <input type="text" id="personalDescInput" placeholder="Enter expense name">
+        <label>Category</label>
+        <div class="category-grid" id="personalCategorySelect"></div>
+        <label>Currency</label>
+        <div class="curr-select" id="personalCurrSelect"></div>
+        <label>Amount</label>
+        <input type="text" inputmode="decimal" id="personalAmtInput" placeholder="0.00">
+        <div class="modal-actions">
+          <button class="cancel-btn" id="cancelAddPersonalBtn">Cancel</button>
+          <button class="add-btn" id="addPersonalBtn" style="background:var(--blue);">+ Add expense</button>
         </div>
       </div>
     </div>
@@ -876,6 +910,9 @@ let pendingReceiptDataUrl = null; // base64 data URL of a newly-picked photo thi
 let removeReceiptFlag = false;    // true if the user explicitly removed an existing receipt
 const CURRENCIES = ["PHP", "THB"];
 const SYMBOL = { PHP: "₱", THB: "฿" };
+let selectedPersonalCategory = "other";
+let selectedPersonalCurrency = "PHP";
+let personalExpenseTarget = null; // which person's tab opened the modal
 
 function fmt(n, cur){
   return (SYMBOL[cur]||"₱") + Math.abs(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -909,12 +946,18 @@ function initials(name){ return name[0]; }
 function normalizeState(raw){
   raw.expenses = raw.expenses || [];
   raw.payments = raw.payments || [];
+  raw.personalExpenses = raw.personalExpenses || [];
   raw.expenses.forEach(e => {
     if (!e.currency) e.currency = "PHP";
     if (!e.ts) e.ts = Date.now();
     if (!e.category) e.category = "other";
     if (!e.paymentMethod) e.paymentMethod = "cash";
     if (!e.notes) e.notes = [];
+  });
+  raw.personalExpenses.forEach(e => {
+    if (!e.currency) e.currency = "PHP";
+    if (!e.ts) e.ts = Date.now();
+    if (!e.category) e.category = "other";
   });
   return raw;
 }
@@ -1233,6 +1276,29 @@ function renderCurrSelect(){
   ).join('');
   el.querySelectorAll('.curr-btn').forEach(btn=>{
     btn.onclick = () => { selectedCurrency = btn.dataset.c; renderCurrSelect(); if (splitMode==='exact') updateExactTotal(); };
+  });
+}
+
+function renderPersonalCategorySelect(){
+  const el = document.getElementById('personalCategorySelect');
+  el.innerHTML = CATEGORIES.map(c =>
+    `<button class="category-btn ${selectedPersonalCategory===c.key?'active':''}" data-k="${c.key}">
+      <span class="cicon">${c.icon}</span>${c.label}
+    </button>`
+  ).join('');
+  el.querySelectorAll('.category-btn').forEach(btn=>{
+    btn.onclick = () => { selectedPersonalCategory = btn.dataset.k; renderPersonalCategorySelect(); };
+  });
+}
+
+function renderPersonalCurrSelect(){
+  const el = document.getElementById('personalCurrSelect');
+  const opts = [["PHP",`${flagIcon('PH')} ₱ PHP`], ["THB",`${flagIcon('TH')} ฿ THB`]];
+  el.innerHTML = opts.map(([code,label]) =>
+    `<button class="curr-btn ${selectedPersonalCurrency===code?'active':''}" data-c="${code}">${label}</button>`
+  ).join('');
+  el.querySelectorAll('.curr-btn').forEach(btn=>{
+    btn.onclick = () => { selectedPersonalCurrency = btn.dataset.c; renderPersonalCurrSelect(); };
   });
 }
 
@@ -1615,6 +1681,41 @@ function renderPersonSummary(person){
   renderSettleRows(document.getElementById('personSettlements'), personMoves);
 }
 
+function renderPersonalExpenses(person){
+  const el = document.getElementById('personalExpensesList');
+  const items = (state.personalExpenses||[]).filter(e => e.person === person).sort((a,b) => b.ts - a.ts);
+  if (items.length === 0){
+    el.innerHTML = `<div class="empty">No personal expenses yet.</div>`;
+    return;
+  }
+  el.innerHTML = items.map(e => {
+    const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
+    return `<div class="expense personal" data-id="${e.id}">
+      <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
+      <div class="body">
+        <div class="desc">${escapeHtml(e.desc)}</div>
+        <div class="meta">
+          <span class="tag pm-tag">${cat.label}</span>
+        </div>
+      </div>
+      <div class="right">
+        <div class="amt">${fmt(e.amount, e.currency)}</div>
+        <button class="del" data-id="${e.id}" title="Delete personal expense">${phIcon('trash',15)}</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.del').forEach(btn=>{
+    btn.onclick = async (ev) => {
+      ev.stopPropagation();
+      const ok = await showConfirm('Delete this personal expense?');
+      if (!ok) return;
+      state.personalExpenses = state.personalExpenses.filter(e => e.id !== btn.dataset.id);
+      await saveState();
+      renderPersonalExpenses(person);
+    };
+  });
+}
+
 function updateView(){
   const inDetail = !!detailItem;
   document.getElementById('mainView').style.display = inDetail ? 'none' : '';
@@ -1632,9 +1733,14 @@ function updateView(){
   document.getElementById('calendarView').style.display = isCalendar ? '' : 'none';
   const isPerson = PEOPLE.includes(currentView);
   document.getElementById('personSummary').style.display = isPerson ? '' : 'none';
+  document.getElementById('personalExpensesSection').style.display = isPerson ? '' : 'none';
   document.getElementById('openAddExpenseBtn').style.display = (currentView === 'home') ? '' : 'none';
+  document.getElementById('openAddPersonalExpenseBtn').style.display = isPerson ? '' : 'none';
   if (isTotals) renderInsights();
-  if (isPerson) renderPersonSummary(currentView);
+  if (isPerson){
+    renderPersonSummary(currentView);
+    renderPersonalExpenses(currentView);
+  }
   if (isCalendar) renderCalendarView();
 }
 
@@ -2082,6 +2188,52 @@ document.getElementById('cancelAddBtn').onclick = closeAddModal;
 document.getElementById('addModalOverlay').addEventListener('click', (e) => {
   if (e.target.id === 'addModalOverlay') closeAddModal();
 });
+
+function openAddPersonalModal(){
+  personalExpenseTarget = currentView;
+  selectedPersonalCategory = 'other';
+  selectedPersonalCurrency = 'PHP';
+  document.getElementById('personalDescInput').value = '';
+  document.getElementById('personalAmtInput').value = '';
+  document.getElementById('personalFormErr').style.display = 'none';
+  renderPersonalCategorySelect();
+  renderPersonalCurrSelect();
+  document.getElementById('addPersonalModalOverlay').classList.add('open');
+}
+function closeAddPersonalModal(){
+  document.getElementById('addPersonalModalOverlay').classList.remove('open');
+}
+document.getElementById('openAddPersonalExpenseBtn').onclick = openAddPersonalModal;
+document.getElementById('closeAddPersonalModalBtn').onclick = closeAddPersonalModal;
+document.getElementById('cancelAddPersonalBtn').onclick = closeAddPersonalModal;
+document.getElementById('addPersonalModalOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'addPersonalModalOverlay') closeAddPersonalModal();
+});
+document.getElementById('personalAmtInput').addEventListener('input', (ev) => {
+  ev.target.value = formatAmountInput(ev.target.value);
+});
+document.getElementById('addPersonalBtn').onclick = async () => {
+  const desc = document.getElementById('personalDescInput').value.trim();
+  const amt = parseAmount(document.getElementById('personalAmtInput').value);
+  const errEl = document.getElementById('personalFormErr');
+  if (!desc || !amt || amt <= 0){
+    errEl.textContent = 'Add a description and amount.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  state.personalExpenses.push({
+    id: 'pe-' + Date.now(),
+    ts: Date.now(),
+    person: personalExpenseTarget,
+    desc, amount: amt,
+    currency: selectedPersonalCurrency,
+    category: selectedPersonalCategory
+  });
+  await saveState();
+  closeAddPersonalModal();
+  renderPersonalExpenses(personalExpenseTarget);
+};
 
 function openDetail(type, id){
   detailItem = { type, id };
