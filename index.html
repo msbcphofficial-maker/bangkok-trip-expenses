@@ -703,6 +703,29 @@
         <div class="curr-select" id="personalCurrSelect"></div>
         <label>Amount</label>
         <input type="text" inputmode="decimal" id="personalAmtInput" placeholder="0.00">
+        <label>Payment method</label>
+        <div class="curr-select" id="personalPaymentMethodSelect"></div>
+        <div id="personalCardWrap" style="display:none;">
+          <label>Card name</label>
+          <input type="text" id="personalCardName" placeholder="e.g. BPI Visa">
+        </div>
+
+        <label>Receipt photo (optional)</label>
+        <div class="receipt-picker">
+          <div id="personalReceiptPreviewWrap" style="display:none;">
+            <img id="personalReceiptPreviewImg" class="receipt-preview">
+            <button type="button" class="receipt-remove-btn" id="removePersonalReceiptBtn">
+              <svg class="ph-icon" width="13" height="13" viewBox="0 0 256 256" fill="currentColor"><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></svg>
+              Remove photo
+            </button>
+          </div>
+          <label for="personalReceiptInput" class="receipt-upload-btn" id="personalReceiptUploadLabel">
+            <svg class="ph-icon" width="16" height="16" viewBox="0 0 256 256" fill="currentColor"><path d="M208,56H180.28L166.65,35.56A8,8,0,0,0,160,32H96a8,8,0,0,0-6.65,3.56L75.71,56H48A24,24,0,0,0,24,80V192a24,24,0,0,0,24,24H208a24,24,0,0,0,24-24V80A24,24,0,0,0,208,56Zm8,136a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V80a8,8,0,0,1,8-8H80a8,8,0,0,0,6.66-3.56L100.28,48h55.43l13.63,20.44A8,8,0,0,0,176,72h32a8,8,0,0,1,8,8ZM128,88a44,44,0,1,0,44,44A44.05,44.05,0,0,0,128,88Zm0,72a28,28,0,1,1,28-28A28,28,0,0,1,128,160Z"/></svg>
+            Add a photo
+          </label>
+          <input type="file" accept="image/*" id="personalReceiptInput" style="display:none;">
+        </div>
+
         <div class="modal-actions">
           <button class="cancel-btn" id="cancelAddPersonalBtn">Cancel</button>
           <button class="add-btn" id="addPersonalBtn" style="background:var(--blue);">+ Add expense</button>
@@ -914,6 +937,8 @@ const SYMBOL = { PHP: "₱", THB: "฿" };
 let selectedPersonalCategory = "other";
 let selectedPersonalCurrency = "PHP";
 let personalExpenseTarget = null; // which person's tab opened the modal
+let selectedPersonalPaymentMethod = "cash";
+let pendingPersonalReceiptDataUrl = null;
 
 function fmt(n, cur){
   return (SYMBOL[cur]||"₱") + Math.abs(n).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -959,6 +984,7 @@ function normalizeState(raw){
     if (!e.currency) e.currency = "PHP";
     if (!e.ts) e.ts = Date.now();
     if (!e.category) e.category = "other";
+    if (!e.paymentMethod) e.paymentMethod = "cash";
   });
   return raw;
 }
@@ -1301,6 +1327,30 @@ function renderPersonalCurrSelect(){
   el.querySelectorAll('.curr-btn').forEach(btn=>{
     btn.onclick = () => { selectedPersonalCurrency = btn.dataset.c; renderPersonalCurrSelect(); };
   });
+}
+
+function renderPersonalPaymentMethodSelect(){
+  const el = document.getElementById('personalPaymentMethodSelect');
+  const opts = [["cash", phIcon('money',15), "Cash"], ["card", phIcon('creditCard',15), "Card"]];
+  el.innerHTML = opts.map(([code,icon,label]) =>
+    `<button class="curr-btn" data-m="${code}" style="display:flex;align-items:center;justify-content:center;gap:6px;">${icon}${label}</button>`
+  ).join('');
+  el.querySelectorAll('.curr-btn').forEach(btn=>{
+    if (btn.dataset.m === selectedPersonalPaymentMethod) btn.classList.add('active');
+    btn.onclick = () => { selectedPersonalPaymentMethod = btn.dataset.m; renderPersonalPaymentMethodSelect(); };
+  });
+  document.getElementById('personalCardWrap').style.display = selectedPersonalPaymentMethod === 'card' ? '' : 'none';
+}
+
+function showPersonalReceiptPreview(dataUrl){
+  document.getElementById('personalReceiptPreviewImg').src = dataUrl;
+  document.getElementById('personalReceiptPreviewWrap').style.display = 'block';
+  document.getElementById('personalReceiptUploadLabel').style.display = 'none';
+}
+function hidePersonalReceiptPreview(){
+  document.getElementById('personalReceiptPreviewWrap').style.display = 'none';
+  document.getElementById('personalReceiptUploadLabel').style.display = '';
+  document.getElementById('personalReceiptInput').value = '';
 }
 
 function renderAvatars(){
@@ -1691,12 +1741,15 @@ function renderPersonalExpenses(person){
   }
   el.innerHTML = items.map(e => {
     const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
+    const pm = e.paymentMethod === 'card' ? `${e.cardName ? escapeHtml(e.cardName) + ' ' : ''}card` : 'cash';
     return `<div class="expense personal" data-id="${e.id}">
       <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
       <div class="body">
         <div class="desc">${escapeHtml(e.desc)}</div>
         <div class="meta">
           <span class="tag pm-tag">${cat.label}</span>
+          <span class="tag pm-tag">${pm}</span>
+          ${e.hasReceipt ? `<span class="receipt-badge" title="Has a receipt photo">${phIcon('camera',14)}</span>` : ''}
         </div>
       </div>
       <div class="right">
@@ -1710,7 +1763,11 @@ function renderPersonalExpenses(person){
       ev.stopPropagation();
       const ok = await showConfirm('Delete this personal expense?');
       if (!ok) return;
+      const item = state.personalExpenses.find(e => e.id === btn.dataset.id);
       state.personalExpenses = state.personalExpenses.filter(e => e.id !== btn.dataset.id);
+      if (item && item.hasReceipt){
+        try{ await supabaseClient.from('receipts').delete().eq('id', item.id); }catch(err){}
+      }
       await saveState();
       renderPersonalExpenses(person);
     };
@@ -2086,6 +2143,23 @@ document.getElementById('removeReceiptBtn').onclick = () => {
 };
 document.getElementById('receiptPreviewImg').onclick = () => openLightbox(document.getElementById('receiptPreviewImg').src);
 
+document.getElementById('personalReceiptInput').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  try{
+    const dataUrl = await compressReceiptImage(file);
+    pendingPersonalReceiptDataUrl = dataUrl;
+    showPersonalReceiptPreview(dataUrl);
+  }catch(err){
+    showSaveError("Couldn't process that photo — try a different image.");
+  }
+});
+document.getElementById('removePersonalReceiptBtn').onclick = () => {
+  pendingPersonalReceiptDataUrl = null;
+  hidePersonalReceiptPreview();
+};
+document.getElementById('personalReceiptPreviewImg').onclick = () => openLightbox(document.getElementById('personalReceiptPreviewImg').src);
+
 function openLightbox(src){
   document.getElementById('lightboxImg').src = src;
   document.getElementById('lightboxOverlay').classList.add('open');
@@ -2194,11 +2268,16 @@ function openAddPersonalModal(){
   personalExpenseTarget = currentView;
   selectedPersonalCategory = 'other';
   selectedPersonalCurrency = 'PHP';
+  selectedPersonalPaymentMethod = 'cash';
+  pendingPersonalReceiptDataUrl = null;
   document.getElementById('personalDescInput').value = '';
   document.getElementById('personalAmtInput').value = '';
+  document.getElementById('personalCardName').value = '';
   document.getElementById('personalFormErr').style.display = 'none';
   renderPersonalCategorySelect();
   renderPersonalCurrSelect();
+  renderPersonalPaymentMethodSelect();
+  hidePersonalReceiptPreview();
   document.getElementById('addPersonalModalOverlay').classList.add('open');
 }
 function closeAddPersonalModal(){
@@ -2223,14 +2302,27 @@ document.getElementById('addPersonalBtn').onclick = async () => {
     return;
   }
   errEl.style.display = 'none';
-  state.personalExpenses.push({
+  const newPersonalExpense = {
     id: 'pe-' + Date.now(),
     ts: Date.now(),
     person: personalExpenseTarget,
     desc, amount: amt,
     currency: selectedPersonalCurrency,
-    category: selectedPersonalCategory
-  });
+    category: selectedPersonalCategory,
+    paymentMethod: selectedPersonalPaymentMethod,
+    cardName: selectedPersonalPaymentMethod === 'card' ? document.getElementById('personalCardName').value.trim() : ''
+  };
+  if (pendingPersonalReceiptDataUrl){
+    try{
+      const { error } = await supabaseClient.from('receipts').upsert({ id: newPersonalExpense.id, data_url: pendingPersonalReceiptDataUrl });
+      if (error) throw error;
+      newPersonalExpense.hasReceipt = true;
+    }catch(err){
+      showSaveError("Couldn't save the receipt photo — the expense was saved without it.");
+      newPersonalExpense.hasReceipt = false;
+    }
+  }
+  state.personalExpenses.push(newPersonalExpense);
   await saveState();
   closeAddPersonalModal();
   renderPersonalExpenses(personalExpenseTarget);
