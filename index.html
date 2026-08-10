@@ -1755,10 +1755,17 @@ function renderPersonalExpenses(person){
     el.innerHTML = `<div class="empty">No personal expenses yet.</div>`;
     return;
   }
+  let lastDateKey = null;
   el.innerHTML = items.map(e => {
+    const dateKey = new Date(e.ts).toDateString();
+    let dateSep = '';
+    if (dateKey !== lastDateKey){
+      dateSep = `<div class="activity-date-sep">${formatDate(e.ts)}</div>`;
+      lastDateKey = dateKey;
+    }
     const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
     const pm = e.paymentMethod === 'card' ? `${e.cardName ? escapeHtml(e.cardName) + ' ' : ''}card` : 'cash';
-    return `<div class="expense personal" data-id="${e.id}">
+    return `${dateSep}<div class="expense personal" data-id="${e.id}">
       <div class="cat-icon" title="${cat.label}">${cat.icon}</div>
       <div class="body">
         <div class="desc">${escapeHtml(e.desc)}</div>
