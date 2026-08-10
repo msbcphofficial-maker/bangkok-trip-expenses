@@ -576,7 +576,6 @@
     </header>
 
     <button class="fab-add" id="openAddExpenseBtn">+ Add an expense</button>
-    <button class="fab-add personal-add-btn" id="openAddPersonalExpenseBtn" style="display:none;">+ Add a personal expense</button>
 
     <div class="card summary" id="summaryCard" style="display:none;">
       <div class="summary-inner">
@@ -593,7 +592,11 @@
 
     <div class="card" id="insightsCard" style="display:none;"></div>
 
+    <div class="curr-select" id="personSubTabs" style="display:none;margin-bottom:16px;"></div>
+
     <div class="card summary" id="personSummary" style="display:none;"></div>
+
+    <button class="fab-add personal-add-btn" id="openAddPersonalExpenseBtn" style="display:none;">+ Add a personal expense</button>
 
     <div id="personalExpensesSection" style="display:none;">
       <div class="section-title">Personal expenses</div>
@@ -937,6 +940,7 @@ const SYMBOL = { PHP: "₱", THB: "฿" };
 let selectedPersonalCategory = "other";
 let selectedPersonalCurrency = "PHP";
 let personalExpenseTarget = null; // which person's tab opened the modal
+let personSubTab = 'balances'; // 'balances' | 'personal'
 let selectedPersonalPaymentMethod = "cash";
 let pendingPersonalReceiptDataUrl = null;
 
@@ -1367,6 +1371,7 @@ function renderAvatars(){
   el.querySelectorAll('.person-pill').forEach(btn=>{
     btn.onclick = () => {
       currentView = btn.dataset.v;
+      if (PEOPLE.includes(currentView)) personSubTab = 'balances';
       renderAvatars();
       renderExpenses();
       updateActivityTitle();
@@ -1732,6 +1737,17 @@ function renderPersonSummary(person){
   renderSettleRows(document.getElementById('personSettlements'), personMoves);
 }
 
+function renderPersonSubTabs(){
+  const el = document.getElementById('personSubTabs');
+  const opts = [['balances','Balances'], ['personal','Personal']];
+  el.innerHTML = opts.map(([code,label]) =>
+    `<button class="curr-btn ${personSubTab===code?'active':''}" data-tab="${code}">${label}</button>`
+  ).join('');
+  el.querySelectorAll('.curr-btn').forEach(btn=>{
+    btn.onclick = () => { personSubTab = btn.dataset.tab; updateView(); };
+  });
+}
+
 function renderPersonalExpenses(person){
   const el = document.getElementById('personalExpensesList');
   const items = (state.personalExpenses||[]).filter(e => e.person === person).sort((a,b) => b.ts - a.ts);
@@ -1784,20 +1800,24 @@ function updateView(){
   }
   const isTotals = currentView === 'totals';
   const isCalendar = currentView === 'calendar';
+  const isPerson = PEOPLE.includes(currentView);
+  const showBalances = isPerson && personSubTab === 'balances';
+  const showPersonal = isPerson && personSubTab === 'personal';
   document.getElementById('summaryCard').style.display = isTotals ? '' : 'none';
   document.getElementById('insightsCard').style.display = isTotals ? '' : 'none';
-  document.getElementById('activityTitle').style.display = isTotals ? 'none' : '';
-  document.getElementById('expenseList').style.display = (isTotals || isCalendar) ? 'none' : '';
+  document.getElementById('activityTitle').style.display = (isTotals || showPersonal) ? 'none' : '';
+  document.getElementById('expenseList').style.display = (isTotals || isCalendar || showPersonal) ? 'none' : '';
   document.getElementById('calendarView').style.display = isCalendar ? '' : 'none';
-  const isPerson = PEOPLE.includes(currentView);
-  document.getElementById('personSummary').style.display = isPerson ? '' : 'none';
-  document.getElementById('personalExpensesSection').style.display = isPerson ? '' : 'none';
+  document.getElementById('personSubTabs').style.display = isPerson ? '' : 'none';
+  document.getElementById('personSummary').style.display = showBalances ? '' : 'none';
+  document.getElementById('personalExpensesSection').style.display = showPersonal ? '' : 'none';
   document.getElementById('openAddExpenseBtn').style.display = (currentView === 'home') ? '' : 'none';
-  document.getElementById('openAddPersonalExpenseBtn').style.display = isPerson ? '' : 'none';
+  document.getElementById('openAddPersonalExpenseBtn').style.display = showPersonal ? '' : 'none';
   if (isTotals) renderInsights();
   if (isPerson){
-    renderPersonSummary(currentView);
-    renderPersonalExpenses(currentView);
+    renderPersonSubTabs();
+    if (showBalances) renderPersonSummary(currentView);
+    if (showPersonal) renderPersonalExpenses(currentView);
   }
   if (isCalendar) renderCalendarView();
 }
