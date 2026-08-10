@@ -2445,11 +2445,18 @@ document.getElementById('addPersonalBtn').onclick = async () => {
       newPersonalExpense.hasReceipt = false;
     }
   }
+  const milestoneBeforeTotal = state.personalExpenses
+    .filter(e => e.person === newPersonalExpense.person && e.currency === newPersonalExpense.currency)
+    .reduce((s,e) => s + e.amount, 0);
+  const milestoneAfterTotal = milestoneBeforeTotal + newPersonalExpense.amount;
+  const crossedMilestone = findCrossedMilestone(newPersonalExpense.currency, milestoneBeforeTotal, milestoneAfterTotal);
+
   state.personalExpenses.push(newPersonalExpense);
   await saveState();
   closeAddPersonalModal();
   renderPersonalSummary(personalExpenseTarget);
   renderPersonalExpenses(personalExpenseTarget);
+  if (crossedMilestone) showMilestonePopup(newPersonalExpense.person, crossedMilestone);
 };
 
 function openDetail(type, id){
@@ -2697,12 +2704,6 @@ document.getElementById('addBtn').onclick = async () => {
     newExpense.hasReceipt = original ? !!original.hasReceipt : false;
   }
 
-  const milestoneBeforeTotal = state.expenses
-    .filter(e => e.id !== newExpense.id && e.paidBy === newExpense.paidBy && e.currency === newExpense.currency)
-    .reduce((s,e) => s + e.amount, 0);
-  const milestoneAfterTotal = milestoneBeforeTotal + newExpense.amount;
-  const crossedMilestone = findCrossedMilestone(newExpense.currency, milestoneBeforeTotal, milestoneAfterTotal);
-
   if (editingExpenseId){
     const idx = state.expenses.findIndex(x => x.id === editingExpenseId);
     if (idx !== -1) state.expenses[idx] = newExpense; else state.expenses.push(newExpense);
@@ -2717,7 +2718,6 @@ document.getElementById('addBtn').onclick = async () => {
   PEOPLE.forEach(p => exactAmounts[p] = '');
   closeAddModal();
   render();
-  if (crossedMilestone) showMilestonePopup(newExpense.paidBy, crossedMilestone);
 };
 
 function findCrossedMilestone(currency, before, after){
