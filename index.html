@@ -605,6 +605,7 @@
     <button class="fab-add personal-add-btn" id="openAddPersonalExpenseBtn" style="display:none;">+ Add a personal expense</button>
 
     <div id="personalExpensesSection" style="display:none;">
+      <div class="card summary" id="personalSummaryCard"></div>
       <div class="section-title">Personal expenses</div>
       <div id="personalExpensesList"></div>
     </div>
@@ -1759,6 +1760,36 @@ function renderPersonSubTabs(){
   });
 }
 
+function renderPersonalSummary(person){
+  const el = document.getElementById('personalSummaryCard');
+  const items = (state.personalExpenses||[]).filter(e => e.person === person);
+  if (items.length === 0){
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = '';
+  const totals = {};
+  items.forEach(e => { totals[e.currency] = (totals[e.currency]||0) + e.amount; });
+  const amountLines = CURRENCIES.filter(cur => totals[cur] > 0)
+    .map(cur => `<div class="amt-line">${fmt(totals[cur], cur)}</div>`).join('');
+  const catTotals = {};
+  items.forEach(e => { catTotals[e.category] = (catTotals[e.category]||0) + 1; });
+  const topCatKey = Object.entries(catTotals).sort((a,b) => b[1]-a[1])[0][0];
+  const topCat = CATEGORY_MAP[topCatKey] || CATEGORY_MAP.other;
+  el.innerHTML = `
+    <div class="summary-inner">
+      <div class="summary-title">Personal spending</div>
+      <div class="total-spend">
+        <div class="label">Spent so far</div>
+        <div class="total-amounts">${amountLines}</div>
+      </div>
+      <div class="top-spender">
+        <span class="stat-icon">${topCat.icon}</span>
+        <span>${items.length} expense${items.length===1?'':'s'} logged · mostly on <b>${topCat.label}</b></span>
+      </div>
+    </div>`;
+}
+
 function renderPersonalExpenses(person){
   const el = document.getElementById('personalExpensesList');
   const items = (state.personalExpenses||[]).filter(e => e.person === person).sort((a,b) => b.ts - a.ts);
@@ -1803,6 +1834,7 @@ function renderPersonalExpenses(person){
         try{ await supabaseClient.from('receipts').delete().eq('id', item.id); }catch(err){}
       }
       await saveState();
+      renderPersonalSummary(person);
       renderPersonalExpenses(person);
     };
   });
@@ -1835,7 +1867,10 @@ function updateView(){
   if (isPerson){
     renderPersonSubTabs();
     if (showBalances) renderPersonSummary(currentView);
-    if (showPersonal) renderPersonalExpenses(currentView);
+    if (showPersonal){
+      renderPersonalSummary(currentView);
+      renderPersonalExpenses(currentView);
+    }
   }
   if (isCalendar) renderCalendarView();
 }
@@ -2374,6 +2409,7 @@ document.getElementById('addPersonalBtn').onclick = async () => {
   state.personalExpenses.push(newPersonalExpense);
   await saveState();
   closeAddPersonalModal();
+  renderPersonalSummary(personalExpenseTarget);
   renderPersonalExpenses(personalExpenseTarget);
 };
 
