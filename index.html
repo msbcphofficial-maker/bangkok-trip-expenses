@@ -114,9 +114,6 @@
     margin-bottom:16px;
   }
 
-  /* Summary / totals card with torn-receipt bottom edge */
-  .summary{padding-bottom:0;overflow:hidden;}
-  .summary-inner{padding-bottom:20px;}
   .summary-title{
     font-family:'Space Mono',monospace;
     font-size:11px;letter-spacing:0.1em;text-transform:uppercase;
@@ -147,12 +144,6 @@
   .amt.even{color:var(--ink-soft);}
   .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
 
-  .zigzag{
-    height:14px;
-    background:
-      linear-gradient(135deg, var(--page) 50%, transparent 50%) 0 0/14px 14px,
-      linear-gradient(45deg, var(--page) 50%, transparent 50%) 0 0/14px 14px;
-  }
 
   .settle-title{
     font-family:'Space Mono',monospace;
@@ -592,7 +583,6 @@
         <div class="settle-title">To settle up</div>
         <div id="settlements"></div>
       </div>
-      <div class="zigzag"></div>
     </div>
 
     <div class="card" id="insightsCard" style="display:none;"></div>
@@ -1621,8 +1611,7 @@ function renderPersonSummary(person){
       </div>
       <div class="settle-title">To settle up</div>
       <div id="personSettlements"></div>
-    </div>
-    <div class="zigzag"></div>`;
+    </div>`;
   renderSettleRows(document.getElementById('personSettlements'), personMoves);
 }
 
