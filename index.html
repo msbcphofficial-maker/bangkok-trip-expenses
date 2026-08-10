@@ -224,6 +224,8 @@
     font-size:10.5px;letter-spacing:0.04em;font-weight:400;
   }
   .fully-paid-tag .dot{width:7px;height:7px;border-radius:50%;background:#42C130;flex-shrink:0;}
+  .detail-fully-paid{margin-top:6px;}
+  .detail-fully-paid .fully-paid-tag{margin-left:0;}
   .expense .amt{
     font-family:'Space Mono',monospace;font-weight:400;font-size:15px;
   }
@@ -2405,6 +2407,9 @@ function renderDetailView(){
     const cat = CATEGORY_MAP[e.category] || CATEGORY_MAP.other;
     const expensePayments = (state.payments||[]).filter(pm => pm.expenseId === e.id);
     const findTag = (person) => expensePayments.find(pm => pm.from === person);
+    const nonPayerSplit = e.split.filter(p => p !== e.paidBy);
+    const isFullyPaid = nonPayerSplit.length > 0 && nonPayerSplit.every(p => expensePayments.some(pm => pm.from === p));
+    const fullyPaidTag = isFullyPaid ? `<span class="fully-paid-tag"><span class="dot"></span>FULLY PAID</span>` : '';
 
     const rows = e.split.map(p => {
       if (p === e.paidBy){
@@ -2459,6 +2464,7 @@ function renderDetailView(){
           <div style="flex:1;min-width:0;">
             <div class="detail-title">${escapeHtml(e.desc)}</div>
             <div class="detail-date">${cat.label} · ${e.paymentMethod === 'card' ? (e.cardName ? escapeHtml(e.cardName) + ' Card' : 'Card') : 'Cash'} · ${formatDate(e.ts)}</div>
+            ${fullyPaidTag ? `<div class="detail-fully-paid">${fullyPaidTag}</div>` : ''}
           </div>
           ${e.hasReceipt ? `<div class="receipt-thumb-wrap" id="receiptThumbWrap"></div>` : ''}
         </div>
